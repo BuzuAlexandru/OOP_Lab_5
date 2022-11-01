@@ -11,11 +11,11 @@ using namespace std;
 Map map=Map();
 
 Player player=Player();
-int n = 20;
+int n = 50;
 Enemy* enemy;
-int towNr = 8;
+int towNr = 32;
 Tower* archerTower;
-int brkNr = 4;
+int brkNr = 16;
 Barracks* barrack;
 
 void endGame()
@@ -65,6 +65,19 @@ void turn(int t)
                                 archerTower[i].ranger[k].weapon.repair();
                             if(enemy[j].health<=0)
                             {    
+                                for(int p=0;p<brkNr;p++)
+                                    for(int l=0;l<3;l++)
+                                        if
+                                        (
+                                            enemy[j].inCombat 
+                                            && barrack[p].fighter[l].inCombat && 
+                                            barrack[p].fighter[l].isAlive() && 
+                                            not barrack[p].fighter[l].healing
+                                        )
+                                        if(barrack[p].fighter[l].fighting == j && l == enemy[j].fighting)
+                                        {
+                                            barrack[p].fighter[l].disengage();
+                                        }
                                 enemy[j] = Enemy();
                                 player.killCount += 1;
                             }
