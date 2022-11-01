@@ -16,7 +16,7 @@ class Equipment: public Entity
 
     void getDull()
     {
-        integrity -= 0.1;
+        integrity -= 0.5;
     }
 
     void repair()
@@ -33,9 +33,9 @@ class Weapon: public Equipment
 
     Weapon():Equipment()
     {
-        power=rand()%2+1;
+        power=1;
         range=0;
-        accuracy=50;
+        accuracy=75;
     }
 
     int getID()

@@ -49,14 +49,7 @@ class MapComponent: public Environment
     }
 };
 
-/*class iRange
-{
-    public:
-
-    virtual bool inRange() = 0;
-};*/
-
-class Trap: public MapComponent//, public iRange
+class Trap: public MapComponent
 {
     public:
 
@@ -90,7 +83,7 @@ class Trap: public MapComponent//, public iRange
     }
 };
 
-class Tower: public MapComponent//, public iRange
+class Tower: public MapComponent
 {
     public:
 
@@ -101,7 +94,7 @@ class Tower: public MapComponent//, public iRange
     {
         x = x1;
         y = y1;
-        range = rand()%4+5;
+        range = 3;
         for(int i=0;i<3;i++)
             ranger[i] = Archer();
     }
@@ -123,7 +116,7 @@ class Tower: public MapComponent//, public iRange
     }
 };
 
-class Barracks: public MapComponent//, public iRange
+class Barracks: public MapComponent
 {
     public:
 
@@ -141,6 +134,12 @@ class Barracks: public MapComponent//, public iRange
             fighter[i].x = x;
             fighter[i].y = y;
         }
+    }
+
+    void knightResetPos(int i)
+    {
+        fighter[i].x = x;
+        fighter[i].y = y;
     }
 
     int getID()

@@ -8,7 +8,7 @@ class Character: public Entity
 {
     public:
 
-    int maxHealth,health;
+    float maxHealth,health;
 
     Character():Entity()
     {
@@ -26,11 +26,18 @@ class Player: public Character
 {
     public:
 
-    int coins;
+    int coins, killCount, breachCount, knightDefeatCount;
+    float TdefenseDmg, TenemyDmg;
 
     Player():Character()
     {
-        maxHealth = 10;
+        killCount = 0;
+        breachCount = 0;
+        knightDefeatCount = 0; 
+        TdefenseDmg = 0;
+        TenemyDmg = 0;
+
+        maxHealth = 0;
         health = maxHealth;
         coins = 100;
     }
@@ -85,8 +92,8 @@ class Unit: public Character
     Unit():Character()
     {
         armor=1;
-        dexterity=1;
-        strength=rand()%1+1;
+        dexterity=75;
+        strength=1;
         weapon = Weapon();
     }
 
@@ -103,9 +110,17 @@ class Unit: public Character
         health = 0;
     }
 
+    void takeDmg(int dmg)
+    {
+        health -= dmg-dmg*armor/50;
+    }
+
     int hit()
     {
-        return (int)(strength + weapon.power * weapon.integrity / 100);
+        if(rand()%100<(dexterity+weapon.accuracy)/2)
+            return strength + weapon.power * weapon.integrity / 100;
+        else
+            return 0;
     }
 };
 
@@ -126,7 +141,7 @@ class Knight: public Soldier
 {
     public:
 
-    int x,y;
+    int x,y, fighting;
 
     bool inCombat, healing;
 
@@ -137,6 +152,19 @@ class Knight: public Soldier
         strength = 3;
         inCombat = false;
         healing = false;
+        fighting = -1;
+    }
+
+    void engage(int j)
+    {
+        fighting = j;
+        inCombat = true;
+    }
+
+    void disengage()
+    {
+        fighting = -1;
+        inCombat = false;
     }
 
     int getID()
@@ -153,7 +181,7 @@ class Archer: public Soldier
 
     Archer():Soldier()
     {
-        weapon.range = rand()%5+3;
+        weapon.range = 3;
         hasShot = false;
     }
 
@@ -167,13 +195,13 @@ class Enemy: public Unit
 {
     public:
 
-    int x,y,mvSpeed, goldValue, dmgValue;
-    bool inCombat;
+    int x,y,mvSpeed, goldValue, dmgValue, fighting;
+    bool inCombat, deployed;
 
     Enemy():Unit()
     {
         x=0;
-        y=0;
+        y=rand()%3+24;
         maxHealth = rand()%201 + 100;
         health = maxHealth;
         strength = 2;
@@ -181,16 +209,8 @@ class Enemy: public Unit
         goldValue=10;
         dmgValue=1;
         inCombat = false;
-    }
-
-    void moveUp()
-    {
-        y -= mvSpeed;
-    }
-
-    void moveDown()
-    {
-        y += mvSpeed;
+        deployed = false;
+        fighting = -1;
     }
 
     void moveRight()
@@ -198,13 +218,25 @@ class Enemy: public Unit
         x += mvSpeed;
     }
 
-    void moveLeft()
-    {
-        x -= mvSpeed;
-    }
-
     int getID()
     {
         return id;
+    }
+
+    void deploy()
+    {
+        deployed = true;
+    }
+
+    void engage(int j)
+    {
+        fighting = j;
+        inCombat = true;
+    }
+
+    void disengage()
+    {
+        fighting = -1;
+        inCombat = false;
     }
 };

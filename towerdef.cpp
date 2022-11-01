@@ -1,6 +1,7 @@
 #include<iostream>
 #include<cstdlib>
 #include<ctime>
+#include <unistd.h>
 using namespace std;
 
 #include"src/equipment.h"
@@ -10,11 +11,11 @@ using namespace std;
 Map map=Map();
 
 Player player=Player();
-int n = rand()%5 + 10;
+int n = 20;
 Enemy* enemy;
-int towNr = rand()%3 + 1;
+int towNr = 8;
 Tower* archerTower;
-int brkNr = rand()%2+1;
+int brkNr = 4;
 Barracks* barrack;
 
 void endGame()
@@ -34,6 +35,17 @@ void turn(int t)
     {
         t--;
 
+        for(int i=0;i<n;i++)
+        {
+            if(enemy[i].deployed)
+                continue;
+            else
+            {
+                enemy[i].deploy();
+                break;
+            }
+        }
+
         for(int i=0;i<towNr;i++)
             for(int k=0;k<3;k++)
                 archerTower[i].ranger[k].hasShot=false;
@@ -47,12 +59,15 @@ void turn(int t)
                         {
                             tdmg = archerTower[i].ranger[k].hit();
                             enemy[j].takeDmg(tdmg); 
+                            archerTower[i].ranger[k].hasShot=true;
                             archerTower[i].ranger[k].weapon.getDull();
                             if(archerTower[i].ranger[k].weapon.integrity<50)
                                 archerTower[i].ranger[k].weapon.repair();
-                            if(enemy[j].health<0)
-                                enemy[j].kill();
-                            cout<<"\nEnemy "<<j+1<<", HP: "<<enemy[j].health<<"/"<<enemy[j].maxHealth<<" pos: "<<enemy[j].x<<", took "<<tdmg<<" dmg from archer "<<k+1<<" of tower "<<i+1<<". Turn "<<t;
+                            if(enemy[j].health<=0)
+                            {    
+                                enemy[j] = Enemy();
+                                player.killCount += 1;
+                            }
                         }    
                             
         for(int i=0;i<brkNr;i++)
@@ -60,22 +75,27 @@ void turn(int t)
                 if(enemy[j].isAlive() && barrack[i].inRange(enemy[j]) && not enemy[j].inCombat)
                 {
                     for(int k=0;k<3;k++)
-                        if(barrack[i].fighter[k].isAlive() && not barrack[i].fighter[k].inCombat && not barrack[i].fighter[k].healing)
+                        if(not enemy[j].inCombat && barrack[i].fighter[k].isAlive() && not barrack[i].fighter[k].inCombat && not barrack[i].fighter[k].healing)
                         {
-                            barrack[i].fighter[k].x = enemy[j].x;
-                            barrack[i].fighter[k].y = enemy[j].y;
-                            barrack[i].fighter[k].inCombat = true;
-                            enemy[j].inCombat = true;
+                            barrack[i].fighter[k].engage(j);
+                            enemy[j].engage(k);
                             break;
                         }
                 }
+        
 
         for(int i=0;i<brkNr;i++)
             for(int k=0;k<3;k++)
                 for(int j=0;j<n;j++)
-                    if(enemy[j].isAlive() && enemy[j].inCombat && barrack[i].fighter[k].inCombat && barrack[i].fighter[k].isAlive() && not barrack[i].fighter[k].healing)
+                    if
+                    (
+                        enemy[j].isAlive() && enemy[j].inCombat 
+                        && barrack[i].fighter[k].inCombat && 
+                        barrack[i].fighter[k].isAlive() && 
+                        not barrack[i].fighter[k].healing 
+                    )
                     {
-                        if(barrack[i].fighter[k].x == enemy[j].x && barrack[i].fighter[k].y == enemy[j].y)
+                        if(barrack[i].fighter[k].fighting == j && k == enemy[j].fighting)
                         {
                             tdmg = barrack[i].fighter[k].hit();
                             enemy[j].takeDmg(tdmg);
@@ -86,21 +106,24 @@ void turn(int t)
                             enemy[j].weapon.getDull();
                             if(enemy[j].weapon.integrity<50)
                                 enemy[j].weapon.repair();
-                            if(enemy[j].health<0)
+
+                            if(enemy[j].health<=0)
                             {
-                                enemy[j].kill();
-                                barrack[i].fighter[k].inCombat = false;
+                                enemy[j] = Enemy();
+                                barrack[i].fighter[k].disengage();
+                                barrack[i].knightResetPos(k);
+                                player.killCount += 1;
                             }
                                 
-                            if(barrack[i].fighter[k].health<0)
+                            if(barrack[i].fighter[k].health<=0)
                             {
                                 barrack[i].fighter[k].kill();
                                 barrack[i].fighter[k].healing = true;
-                                enemy[j].inCombat = false;
+                                enemy[j].disengage();
+                                barrack[i].fighter[k].disengage();
+                                barrack[i].knightResetPos(k);
+                                player.knightDefeatCount += 1;
                             }
-                                
-                            cout<<"\nEnemy "<<j+1<<", HP: "<<enemy[j].health<<"/"<<enemy[j].maxHealth<<" pos: "<<enemy[j].x<<", took "<<tdmg<<" dmg from knight "<<k+1<<" of barrack "<<i+1<<". Turn "<<t;
-                            cout<<"\nKnight "<<k+1<<" of barrack "<<i+1<<", HP: "<<barrack[i].fighter[k].health<<"/"<<barrack[i].fighter[k].maxHealth<<" pos: "<<barrack[i].fighter[k].x<<", took "<<enemy[j].hit()<<" dmg from enemy "<<j+1<<". Turn "<<t;
                         }
                     }
 
@@ -120,34 +143,15 @@ void turn(int t)
 
         for(int i=0;i<n;i++)
         {
-            if(enemy[i].isAlive() && not enemy[i].inCombat)
+            if(enemy[i].deployed && enemy[i].isAlive() && not enemy[i].inCombat)
             {
                 enemy[i].moveRight();
                 if(enemy[i].x==map.width)
                 {
-                    player.takeDmg(enemy[i].dmgValue);
-                    enemy[i].kill();
-                    cout<<"\nEnemy "<<i+1<<" passed through you defense.";
+                    player.breachCount += 1;
+                    enemy[i] = Enemy();
                 }
-                if(player.health<=0)
-                        {
-                            cout<<"\nEnemies have breached the walls of the castle. Game ended.";
-                            endGame();
-                        }
             }
-        }
-        int deathCount=0;
-
-        for(int i=0;i<n;i++)
-        {
-            if(not enemy[i].isAlive())
-                deathCount++;
-        }
-
-        if(n==deathCount)
-        {
-            cout<<"\nNo more enemies on the map. Player health "<<player.health<<"/"<<player.maxHealth;
-            endGame();
         }  
     }
 }
@@ -171,26 +175,34 @@ int main()
     barrack = (Barracks*)malloc(brkNr*sizeof(Barracks));
 
     for(int i=0;i<n;i++)
-        {
             enemy[i] = Enemy();
-            enemy[i].y = rand()%map.height;
-            cout<<"\nEnemy "<<i+1<<", HP: "<< enemy[i].health;
-        }
 
+    int towSpacing = map.width/towNr;
     for(int i=0;i<towNr;i++)
     {
-        archerTower[i] = Tower(rand()%map.width,rand()%map.height);
-        cout<<"\nCreated archer tower at x: "<<archerTower[i].x<<" y: "<<archerTower[i].y;
+        int y;
+        if(i%2==0) y=22; else y = 28;
+        archerTower[i] = Tower(i*towSpacing,y);
     }
 
+    towSpacing = map.width/brkNr;
     for(int i=0;i<brkNr;i++)
     {
-        barrack[i] = Barracks(rand()%map.width,rand()%map.height);
-        cout<<"\nCreated barrack at x: "<<barrack[i].x<<" y: "<<barrack[i].y;
+        int y;
+        if(i%2==0) y=22; else y = 28;
+        barrack[i] = Barracks(i*towSpacing,y);
     }
-
-    turn(10000);
-    cout<<"\nPlayer health "<<player.health<<"/"<<player.maxHealth;
+    
+    for(int i=0;i<100;i++)
+    {
+        turn(50);
+        system("clear");
+        cout<<"\nNr of defeated enemies: "<<player.killCount<<endl;
+        cout<<"Nr of defeated knights: "<<player.knightDefeatCount<<endl;
+        cout<<"Nr of escaped enemies: "<<player.breachCount<<endl;
+        //cout<<"Nr of : "<<player.<<endl;
+        usleep(250000);
+    }
     endGame();
 
     return 0;
